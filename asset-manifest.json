@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/Shortcuts_ElectronicTimetableInformation/static/css/main.e6c13ad2.css",
+    "main.js": "/Shortcuts_ElectronicTimetableInformation/static/js/main.a9dc7b89.js",
+    "static/js/453.1a16ed4e.chunk.js": "/Shortcuts_ElectronicTimetableInformation/static/js/453.1a16ed4e.chunk.js",
+    "index.html": "/Shortcuts_ElectronicTimetableInformation/index.html",
+    "main.e6c13ad2.css.map": "/Shortcuts_ElectronicTimetableInformation/static/css/main.e6c13ad2.css.map",
+    "main.a9dc7b89.js.map": "/Shortcuts_ElectronicTimetableInformation/static/js/main.a9dc7b89.js.map",
+    "453.1a16ed4e.chunk.js.map": "/Shortcuts_ElectronicTimetableInformation/static/js/453.1a16ed4e.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.a9dc7b89.js"
+  ]
+}
