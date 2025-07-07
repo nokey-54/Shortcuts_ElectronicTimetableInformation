@@ -169,15 +169,6 @@ export default function VRTJourneyPlanner() {
         journey.status = 'Keine Echtzeitinformation';
       }
 
-      // Extract fare
-      const fareButton = row.querySelector('button.std3_fare_button');
-      if (fareButton) {
-        const fareText = fareButton.textContent.trim();
-        const fareMatch = fareText.match(/([\d,]+\s*€)/);
-        if (fareMatch) {
-          journey.fare = fareMatch[1];
-        }
-      }
 
       // Extract transport modes
       const transportIcons = row.querySelectorAll('span.std3_mot-label');
