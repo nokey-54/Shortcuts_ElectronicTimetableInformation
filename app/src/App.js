@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Clock, Calendar, Train, Bus, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Clock, Calendar, Train, Bus, AlertCircle, CheckCircle, Download, RefreshCw } from 'lucide-react';
 
 export default function VRTJourneyPlanner() {
   const [origin, setOrigin] = useState('Ehrang (Trier), Lindenplatz');
@@ -11,6 +11,39 @@ export default function VRTJourneyPlanner() {
   const [journeys, setJourneys] = useState([]);
   const [error, setError] = useState('');
   const [rawHtml, setRawHtml] = useState('');
+  const [autoSearch, setAutoSearch] = useState(false);
+
+  // Parse URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Set origin and destination from URL if provided
+    const vonParam = urlParams.get('von');
+    const nachParam = urlParams.get('nach');
+    const reverseParam = urlParams.get('reverse');
+    const jsonParam = urlParams.get('json');
+
+    if (vonParam) setOrigin(decodeURIComponent(vonParam));
+    if (nachParam) setDestination(decodeURIComponent(nachParam));
+
+    // Handle reverse parameter
+    if (reverseParam === 'true' && vonParam && nachParam) {
+      setOrigin(decodeURIComponent(nachParam));
+      setDestination(decodeURIComponent(vonParam));
+    }
+
+    // Auto-search if json parameter is present
+    if (jsonParam === 'true') {
+      setAutoSearch(true);
+    }
+  }, []);
+
+  // Auto-search when component mounts and autoSearch is true
+  useEffect(() => {
+    if (autoSearch) {
+      fetchJourneyConnections();
+    }
+  }, [autoSearch]);
 
   const formatDateForAPI = (dateStr) => {
     const parts = dateStr.split('-');
@@ -47,8 +80,6 @@ export default function VRTJourneyPlanner() {
       'itdLPxx_template': 'tripresults_pt_trip'
     });
 
-    // Note: Direct API calls might be blocked by CORS. In production, you'd need a proxy server.
-    // For GitHub Pages, you'll need to use a CORS proxy service or set up your own backend.
     const proxyUrl = 'https://corsproxy.io/?';
     const apiUrl = `https://www.vrt-info.de/fahrplanauskunft/XSLT_TRIP_REQUEST2?${params}`;
 
@@ -64,6 +95,12 @@ export default function VRTJourneyPlanner() {
 
       const parsedJourneys = parseJourneyResults(html);
       setJourneys(parsedJourneys);
+
+      // If json=true was in URL params, automatically download JSON
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('json') === 'true' && parsedJourneys.length > 0) {
+        setTimeout(() => downloadJSON(), 1000);
+      }
 
     } catch (err) {
       setError(`Fehler beim Abrufen der Daten: ${err.message}. 
@@ -151,6 +188,12 @@ export default function VRTJourneyPlanner() {
     return journeys;
   };
 
+  const swapDirections = () => {
+    const temp = origin;
+    setOrigin(destination);
+    setDestination(temp);
+  };
+
   const downloadJSON = () => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const data = {
@@ -187,86 +230,260 @@ export default function VRTJourneyPlanner() {
   };
 
   const getStatusIcon = (delayed) => {
-    if (delayed === true) return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-    if (delayed === false) return <CheckCircle className="w-5 h-5 text-green-500" />;
-    return <Clock className="w-5 h-5 text-gray-500" />;
+    if (delayed === true) return <AlertCircle style={{ width: '20px', height: '20px', color: '#EAB308' }} />;
+    if (delayed === false) return <CheckCircle style={{ width: '20px', height: '20px', color: '#22C55E' }} />;
+    return <Clock style={{ width: '20px', height: '20px', color: '#6B7280' }} />;
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">
-            VRT Fahrplanauskunft
-          </h1>
-          <p className="text-center text-gray-600 mb-6">
-            Verkehrsverbund Region Trier
-          </p>
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      backgroundColor: '#F3F4F6',
+      padding: '16px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    },
+    wrapper: {
+      maxWidth: '900px',
+      margin: '0 auto'
+    },
+    card: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      padding: '24px',
+      marginBottom: '24px'
+    },
+    title: {
+      fontSize: '28px',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      marginBottom: '8px',
+      color: '#1F2937'
+    },
+    subtitle: {
+      textAlign: 'center',
+      color: '#6B7280',
+      marginBottom: '24px'
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '16px',
+      marginBottom: '16px'
+    },
+    gridThree: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+      gap: '16px',
+      marginBottom: '16px'
+    },
+    inputGroup: {
+      marginBottom: '16px'
+    },
+    label: {
+      display: 'block',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: '#374151',
+      marginBottom: '4px'
+    },
+    input: {
+      width: '100%',
+      padding: '8px 12px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '6px',
+      fontSize: '16px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      boxSizing: 'border-box'
+    },
+    inputFocus: {
+      borderColor: '#3B82F6'
+    },
+    button: {
+      width: '100%',
+      backgroundColor: '#3B82F6',
+      color: 'white',
+      padding: '12px 16px',
+      borderRadius: '6px',
+      border: 'none',
+      fontSize: '16px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
+      transition: 'background-color 0.2s'
+    },
+    buttonHover: {
+      backgroundColor: '#2563EB'
+    },
+    buttonDisabled: {
+      backgroundColor: '#9CA3AF',
+      cursor: 'not-allowed'
+    },
+    smallButton: {
+      backgroundColor: '#10B981',
+      color: 'white',
+      padding: '8px 16px',
+      borderRadius: '6px',
+      border: 'none',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      transition: 'background-color 0.2s'
+    },
+    purpleButton: {
+      backgroundColor: '#8B5CF6',
+      color: 'white',
+      padding: '8px 16px',
+      borderRadius: '6px',
+      border: 'none',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      transition: 'background-color 0.2s'
+    },
+    errorBox: {
+      backgroundColor: '#FEE2E2',
+      border: '1px solid #FCA5A5',
+      color: '#DC2626',
+      padding: '16px',
+      borderRadius: '6px',
+      marginBottom: '24px'
+    },
+    journeyCard: {
+      border: '1px solid #E5E7EB',
+      borderRadius: '8px',
+      padding: '16px',
+      marginBottom: '16px',
+      transition: 'background-color 0.2s',
+      cursor: 'pointer'
+    },
+    journeyCardHover: {
+      backgroundColor: '#F9FAFB'
+    },
+    spinner: {
+      display: 'inline-block',
+      width: '20px',
+      height: '20px',
+      border: '2px solid #ffffff',
+      borderRadius: '50%',
+      borderTopColor: 'transparent',
+      animation: 'spin 0.8s linear infinite'
+    },
+    reverseButton: {
+      position: 'absolute',
+      right: '8px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      backgroundColor: '#F3F4F6',
+      border: '1px solid #D1D5DB',
+      borderRadius: '50%',
+      width: '36px',
+      height: '36px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s'
+    },
+    inputWrapper: {
+      position: 'relative'
+    }
+  };
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Von
-                </label>
+  // Add CSS animation for spinner
+  if (!document.getElementById('spinner-style')) {
+    const style = document.createElement('style');
+    style.id = 'spinner-style';
+    style.textContent = `
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.wrapper}>
+        <div style={styles.card}>
+          <h1 style={styles.title}>VRT Fahrplanauskunft</h1>
+          <p style={styles.subtitle}>Verkehrsverbund Region Trier</p>
+
+          <div>
+            <div style={styles.grid}>
+              <div style={styles.inputWrapper}>
+                <label style={styles.label}>Von</label>
                 <input
                   type="text"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={styles.input}
                   placeholder="Starthaltestelle"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nach
-                </label>
+              <div style={styles.inputWrapper}>
+                <label style={styles.label}>Nach</label>
                 <input
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={styles.input}
                   placeholder="Zielhaltestelle"
                 />
+                <button
+                  onClick={swapDirections}
+                  style={styles.reverseButton}
+                  title="Richtung tauschen"
+                >
+                  <RefreshCw style={{ width: '18px', height: '18px', color: '#6B7280' }} />
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div style={styles.gridThree}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Calendar className="inline w-4 h-4 mr-1" />
+                <label style={styles.label}>
+                  <Calendar style={{ display: 'inline', width: '16px', height: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }} />
                   Datum
                 </label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={styles.input}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Clock className="inline w-4 h-4 mr-1" />
+                <label style={styles.label}>
+                  <Clock style={{ display: 'inline', width: '16px', height: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }} />
                   Zeit
                 </label>
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={styles.input}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Zeitart
-                </label>
+                <label style={styles.label}>Zeitart</label>
                 <select
                   value={departure ? 'dep' : 'arr'}
                   onChange={(e) => setDeparture(e.target.value === 'dep')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={styles.input}
                 >
                   <option value="dep">Abfahrt</option>
                   <option value="arr">Ankunft</option>
@@ -277,98 +494,119 @@ export default function VRTJourneyPlanner() {
             <button
               onClick={fetchJourneyConnections}
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center gap-2 disabled:bg-gray-400"
+              style={{
+                ...styles.button,
+                ...(loading ? styles.buttonDisabled : {})
+              }}
+              onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
+              onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = styles.button.backgroundColor)}
             >
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <div style={styles.spinner}></div>
                   <span>Suche läuft...</span>
                 </>
               ) : (
                 <>
-                  <Search className="w-5 h-5" />
+                  <Search style={{ width: '20px', height: '20px' }} />
                   <span>Verbindungen suchen</span>
                 </>
               )}
             </button>
+
+            <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#F3F4F6', borderRadius: '6px', fontSize: '14px', color: '#6B7280' }}>
+              <strong>URL Parameter:</strong>
+              <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
+                <li><code>?von=Start&nach=Ziel</code> - Setzt Start und Ziel</li>
+                <li><code>&reverse=true</code> - Tauscht Start und Ziel</li>
+                <li><code>&json=true</code> - Sucht automatisch und lädt JSON herunter</li>
+              </ul>
+            </div>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <p className="font-bold">Fehler</p>
-            <p className="text-sm">{error}</p>
+          <div style={styles.errorBox}>
+            <p style={{ fontWeight: 'bold', marginBottom: '4px' }}>Fehler</p>
+            <p style={{ fontSize: '14px' }}>{error}</p>
           </div>
         )}
 
         {journeys.length > 0 && (
-          <>
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">
-                  {journeys.length} Verbindungen gefunden
-                </h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={downloadJSON}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    JSON
-                  </button>
-                  <button
-                    onClick={downloadHTML}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    HTML
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {journeys.map((journey, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
-                          <span className="text-lg font-semibold">
-                            {journey.departure || 'N/A'} → {journey.arrival || 'N/A'}
-                          </span>
-                          <span className="text-gray-600">
-                            {journey.duration || 'N/A'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 mb-2">
-                          {getStatusIcon(journey.delayed)}
-                          <span className="text-sm text-gray-600">
-                            {journey.status || 'N/A'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <Train className="w-4 h-4" />
-                            {journey.transport_display || 'N/A'}
-                          </span>
-                          {journey.fare && (
-                            <span className="font-semibold text-green-600">
-                              {journey.fare}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-2xl font-bold text-gray-400">
-                        {idx + 1}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          <div style={styles.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937' }}>
+                {journeys.length} Verbindungen gefunden
+              </h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={downloadJSON}
+                  style={styles.smallButton}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = styles.smallButton.backgroundColor}
+                >
+                  <Download style={{ width: '16px', height: '16px' }} />
+                  JSON
+                </button>
+                <button
+                  onClick={downloadHTML}
+                  style={styles.purpleButton}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#7C3AED'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = styles.purpleButton.backgroundColor}
+                >
+                  <Download style={{ width: '16px', height: '16px' }} />
+                  HTML
+                </button>
               </div>
             </div>
-          </>
+
+            <div>
+              {journeys.map((journey, idx) => (
+                <div
+                  key={idx}
+                  style={styles.journeyCard}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = styles.journeyCardHover.backgroundColor}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '18px', fontWeight: '600' }}>
+                          {journey.departure || 'N/A'} → {journey.arrival || 'N/A'}
+                        </span>
+                        <span style={{ color: '#6B7280' }}>
+                          {journey.duration || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        {getStatusIcon(journey.delayed)}
+                        <span style={{ fontSize: '14px', color: '#6B7280' }}>
+                          {journey.status || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Train style={{ width: '16px', height: '16px' }} />
+                          {journey.transport_display || 'N/A'}
+                        </span>
+                        {journey.fare && (
+                          <span style={{ fontWeight: '600', color: '#10B981' }}>
+                            {journey.fare}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#D1D5DB' }}>
+                      {idx + 1}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
