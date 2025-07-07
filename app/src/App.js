@@ -4,14 +4,12 @@ import { Search, Clock, Calendar, Train, Bus, AlertCircle, CheckCircle, Download
 // List of predefined locations
 const LOCATIONS = [
   'Südbahnhof, Trier',
-  'Galerie, Trier',
-  'Hauptbahnhof, Trier',
   'Westbahnhof, Trier-West',
   'Lindenplatz, Ehrang (Trier)',
   'Pfalzel, Am Mühlenteich, Trier',
-  'Karl-Marx-Haus, Trier',
-  'Theater Trier, Trier',
-  'Ehrang (Trier), Lindenplatz'
+  'Bahnhof Pfalzel, Pfalzel (Trier)',
+  'Trier, Brückenstraße',
+  'Theater Trier, Trier'
 ];
 
 export default function VRTJourneyPlanner() {
