@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Clock, Calendar, Train, Bus, AlertCircle, CheckCircle, Download, RefreshCw } from 'lucide-react';
 
+// List of predefined locations
+const LOCATIONS = [
+  'Südbahnhof, Trier',
+  'Galerie, Trier',
+  'Hauptbahnhof, Trier',
+  'Westbahnhof, Trier-West',
+  'Lindenplatz, Ehrang (Trier)',
+  'Pfalzel, Am Mühlenteich, Trier',
+  'Karl-Marx-Haus, Trier',
+  'Theater Trier, Trier',
+  'Ehrang (Trier), Lindenplatz'
+];
+
 export default function VRTJourneyPlanner() {
   const [origin, setOrigin] = useState('Ehrang (Trier), Lindenplatz');
   const [destination, setDestination] = useState('Theater Trier, Trier');
@@ -429,6 +442,7 @@ export default function VRTJourneyPlanner() {
                   onChange={(e) => setOrigin(e.target.value)}
                   style={styles.input}
                   placeholder="Starthaltestelle"
+                  list="locationOptions"
                 />
               </div>
 
@@ -440,6 +454,7 @@ export default function VRTJourneyPlanner() {
                   onChange={(e) => setDestination(e.target.value)}
                   style={styles.input}
                   placeholder="Zielhaltestelle"
+                  list="locationOptions"
                 />
                 <button
                   onClick={swapDirections}
@@ -450,6 +465,12 @@ export default function VRTJourneyPlanner() {
                 </button>
               </div>
             </div>
+
+            <datalist id="locationOptions">
+              {LOCATIONS.map((location, index) => (
+                <option key={index} value={location} />
+              ))}
+            </datalist>
 
             <div style={styles.gridThree}>
               <div>
