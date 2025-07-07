@@ -9,6 +9,7 @@ const LOCATIONS = [
   'Pfalzel, Am Mühlenteich, Trier',
   'Bahnhof Pfalzel, Pfalzel (Trier)',
   'Trier, Brückenstraße',
+  'Hafenstraße, Pfalzel (Trier)',
   'Theater Trier, Trier'
 ];
 
