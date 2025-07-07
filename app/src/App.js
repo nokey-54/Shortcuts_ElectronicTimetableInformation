@@ -16,6 +16,10 @@ const LOCATIONS = [
 export default function VRTJourneyPlanner() {
   const [origin, setOrigin] = useState('Ehrang (Trier), Lindenplatz');
   const [destination, setDestination] = useState('Theater Trier, Trier');
+  const [customOrigin, setCustomOrigin] = useState('');
+  const [customDestination, setCustomDestination] = useState('');
+  const [showCustomOrigin, setShowCustomOrigin] = useState(false);
+  const [showCustomDestination, setShowCustomDestination] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [departure, setDeparture] = useState(true);
@@ -35,13 +39,48 @@ export default function VRTJourneyPlanner() {
     const reverseParam = urlParams.get('reverse');
     const jsonParam = urlParams.get('json');
 
-    if (vonParam) setOrigin(decodeURIComponent(vonParam));
-    if (nachParam) setDestination(decodeURIComponent(nachParam));
+    if (vonParam) {
+      const decodedVon = decodeURIComponent(vonParam);
+      if (LOCATIONS.includes(decodedVon)) {
+        setOrigin(decodedVon);
+      } else {
+        setShowCustomOrigin(true);
+        setCustomOrigin(decodedVon);
+        setOrigin('custom');
+      }
+    }
+
+    if (nachParam) {
+      const decodedNach = decodeURIComponent(nachParam);
+      if (LOCATIONS.includes(decodedNach)) {
+        setDestination(decodedNach);
+      } else {
+        setShowCustomDestination(true);
+        setCustomDestination(decodedNach);
+        setDestination('custom');
+      }
+    }
 
     // Handle reverse parameter
     if (reverseParam === 'true' && vonParam && nachParam) {
-      setOrigin(decodeURIComponent(nachParam));
-      setDestination(decodeURIComponent(vonParam));
+      const decodedVon = decodeURIComponent(nachParam);
+      const decodedNach = decodeURIComponent(vonParam);
+
+      if (LOCATIONS.includes(decodedVon)) {
+        setOrigin(decodedVon);
+      } else {
+        setShowCustomOrigin(true);
+        setCustomOrigin(decodedVon);
+        setOrigin('custom');
+      }
+
+      if (LOCATIONS.includes(decodedNach)) {
+        setDestination(decodedNach);
+      } else {
+        setShowCustomDestination(true);
+        setCustomDestination(decodedNach);
+        setDestination('custom');
+      }
     }
 
     // Auto-search if json parameter is present
@@ -62,17 +101,48 @@ export default function VRTJourneyPlanner() {
     return `${parts[2]}.${parts[1]}.${parts[0]}`;
   };
 
+  const getActualOrigin = () => {
+    return origin === 'custom' ? customOrigin : origin;
+  };
+
+  const getActualDestination = () => {
+    return destination === 'custom' ? customDestination : destination;
+  };
+
+  const handleOriginChange = (value) => {
+    setOrigin(value);
+    if (value === 'custom') {
+      setShowCustomOrigin(true);
+    } else {
+      setShowCustomOrigin(false);
+      setCustomOrigin('');
+    }
+  };
+
+  const handleDestinationChange = (value) => {
+    setDestination(value);
+    if (value === 'custom') {
+      setShowCustomDestination(true);
+    } else {
+      setShowCustomDestination(false);
+      setCustomDestination('');
+    }
+  };
+
   const fetchJourneyConnections = async () => {
     setLoading(true);
     setError('');
     setJourneys([]);
 
+    const actualOrigin = getActualOrigin();
+    const actualDestination = getActualDestination();
+
     const params = new URLSearchParams({
       'language': 'de',
       'itdLPxx_contractor': 'vrt',
-      'name_origin': origin,
+      'name_origin': actualOrigin,
       'type_origin': 'any',
-      'name_destination': destination,
+      'name_destination': actualDestination,
       'type_destination': 'any',
       'itdDateDayMonthYear': formatDateForAPI(date),
       'itdTime': time,
@@ -169,7 +239,6 @@ export default function VRTJourneyPlanner() {
         journey.status = 'Keine Echtzeitinformation';
       }
 
-
       // Extract transport modes
       const transportIcons = row.querySelectorAll('span.std3_mot-label');
       const transportModes = [];
@@ -192,16 +261,26 @@ export default function VRTJourneyPlanner() {
   };
 
   const swapDirections = () => {
-    const temp = origin;
-    setOrigin(destination);
-    setDestination(temp);
+    const tempOrigin = origin;
+    const tempDestination = destination;
+    const tempCustomOrigin = customOrigin;
+    const tempCustomDestination = customDestination;
+    const tempShowCustomOrigin = showCustomOrigin;
+    const tempShowCustomDestination = showCustomDestination;
+
+    setOrigin(tempDestination);
+    setDestination(tempOrigin);
+    setCustomOrigin(tempCustomDestination);
+    setCustomDestination(tempCustomOrigin);
+    setShowCustomOrigin(tempShowCustomDestination);
+    setShowCustomDestination(tempShowCustomOrigin);
   };
 
   const downloadJSON = () => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const data = {
-      origin,
-      destination,
+      origin: getActualOrigin(),
+      destination: getActualDestination(),
       date,
       time,
       departure,
@@ -292,13 +371,47 @@ export default function VRTJourneyPlanner() {
     },
     input: {
       width: '100%',
-      padding: '8px 12px',
+      padding: '12px 16px',
       border: '1px solid #D1D5DB',
       borderRadius: '6px',
       fontSize: '16px',
       outline: 'none',
       transition: 'border-color 0.2s',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      appearance: 'none',
+      backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 4 5\'><path fill=\'%23666\' d=\'M2 0L0 2h4zm0 5L0 3h4z\'/></svg>")',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'right 12px center',
+      backgroundSize: '12px',
+      paddingRight: '40px'
+    },
+    select: {
+      width: '100%',
+      padding: '12px 16px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '6px',
+      fontSize: '16px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      boxSizing: 'border-box',
+      appearance: 'none',
+      backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 4 5\'><path fill=\'%23666\' d=\'M2 0L0 2h4zm0 5L0 3h4z\'/></svg>")',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'right 12px center',
+      backgroundSize: '12px',
+      paddingRight: '40px',
+      cursor: 'pointer'
+    },
+    customInput: {
+      width: '100%',
+      padding: '8px 12px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '6px',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      boxSizing: 'border-box',
+      marginTop: '8px'
     },
     inputFocus: {
       borderColor: '#3B82F6'
@@ -426,26 +539,52 @@ export default function VRTJourneyPlanner() {
             <div style={styles.grid}>
               <div style={styles.inputWrapper}>
                 <label style={styles.label}>Von</label>
-                <input
-                  type="text"
+                <select
                   value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  style={styles.input}
-                  placeholder="Starthaltestelle"
-                  list="locationOptions"
-                />
+                  onChange={(e) => handleOriginChange(e.target.value)}
+                  style={styles.select}
+                >
+                  {LOCATIONS.map((location, index) => (
+                    <option key={index} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                  <option value="custom">Andere Haltestelle...</option>
+                </select>
+                {showCustomOrigin && (
+                  <input
+                    type="text"
+                    value={customOrigin}
+                    onChange={(e) => setCustomOrigin(e.target.value)}
+                    style={styles.customInput}
+                    placeholder="Geben Sie eine andere Haltestelle ein"
+                  />
+                )}
               </div>
 
               <div style={styles.inputWrapper}>
                 <label style={styles.label}>Nach</label>
-                <input
-                  type="text"
+                <select
                   value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  style={styles.input}
-                  placeholder="Zielhaltestelle"
-                  list="locationOptions"
-                />
+                  onChange={(e) => handleDestinationChange(e.target.value)}
+                  style={styles.select}
+                >
+                  {LOCATIONS.map((location, index) => (
+                    <option key={index} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                  <option value="custom">Andere Haltestelle...</option>
+                </select>
+                {showCustomDestination && (
+                  <input
+                    type="text"
+                    value={customDestination}
+                    onChange={(e) => setCustomDestination(e.target.value)}
+                    style={styles.customInput}
+                    placeholder="Geben Sie eine andere Haltestelle ein"
+                  />
+                )}
                 <button
                   onClick={swapDirections}
                   style={styles.reverseButton}
@@ -455,12 +594,6 @@ export default function VRTJourneyPlanner() {
                 </button>
               </div>
             </div>
-
-            <datalist id="locationOptions">
-              {LOCATIONS.map((location, index) => (
-                <option key={index} value={location} />
-              ))}
-            </datalist>
 
             <div style={styles.gridThree}>
               <div>
@@ -494,7 +627,7 @@ export default function VRTJourneyPlanner() {
                 <select
                   value={departure ? 'dep' : 'arr'}
                   onChange={(e) => setDeparture(e.target.value === 'dep')}
-                  style={styles.input}
+                  style={styles.select}
                 >
                   <option value="dep">Abfahrt</option>
                   <option value="arr">Ankunft</option>
@@ -532,6 +665,9 @@ export default function VRTJourneyPlanner() {
                 <li><code>&reverse=true</code> - Tauscht Start und Ziel</li>
                 <li><code>&json=true</code> - Sucht automatisch und lädt JSON herunter</li>
               </ul>
+              <p style={{ marginTop: '8px', fontSize: '12px' }}>
+                Beispiel: <code>?von=Südbahnhof, Trier&nach=Theater Trier, Trier&json=true</code>
+              </p>
             </div>
           </div>
         </div>
